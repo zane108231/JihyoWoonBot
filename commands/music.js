@@ -1,4 +1,7 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const { exec } = require('child_process');
 
 module.exports = (bot) => {
     bot.onText(/\/music (.+)/, async (msg, match) => {
@@ -8,7 +11,6 @@ module.exports = (bot) => {
         const clientId = '5cc03b6b3f894e308fd4ce1ccad22814';
         const clientSecret = 'b74b20aec84a4028bfa8a3c5f25c5cd5';
 
-        // Function to obtain access token from Spotify API
         const getAccessToken = async () => {
             try {
                 const response = await axios.post('https://accounts.spotify.com/api/token', null, {
@@ -58,14 +60,40 @@ module.exports = (bot) => {
             }
 
             const trackUrl = track.external_urls.spotify;
+            const previewUrl = track.preview_url;
             const fileName = `${track.name} - ${track.artists[0].name}.mp3`;
 
-            // Example code to handle downloading and sending the track...
-            // Replace with actual logic to handle downloading and sending the track
-            // For Telegram, you'll need to send an audio file
-            // bot.sendAudio(chatId, track.preview_url, { caption: 'Your caption here' });
+            if (!previewUrl) {
+                bot.sendMessage(chatId, "No preview available for this track.");
+                return;
+            }
 
-            bot.sendMessage(chatId, `Title: ${track.name}\nArtist: ${track.artists[0].name}\nPreview URL: ${track.preview_url}`);
+            // Download the preview file
+            const filePath = path.resolve(__dirname, fileName);
+            const writer = fs.createWriteStream(filePath);
+
+            const responseStream = await axios({
+                url: previewUrl,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            responseStream.data.pipe(writer);
+
+            writer.on('finish', async () => {
+                // Send the audio file to the user
+                await bot.sendAudio(chatId, filePath, { caption: `Title: ${track.name}\nArtist: ${track.artists[0].name}` });
+
+                // Clean up the file after sending
+                fs.unlink(filePath, (err) => {
+                    if (err) console.error('Error deleting the file:', err);
+                });
+            });
+
+            writer.on('error', (err) => {
+                console.error('Error writing the file:', err);
+                bot.sendMessage(chatId, 'An error occurred while processing your request.');
+            });
 
         } catch (error) {
             console.error('An error occurred while processing the request:', error);
@@ -73,9 +101,6 @@ module.exports = (bot) => {
         }
     });
 
-    // Optional: Add more command handlers or bot event listeners as needed
-
-    // Start listening for messages
     bot.on('message', (msg) => {
         console.log('Received message:', msg);
     });
