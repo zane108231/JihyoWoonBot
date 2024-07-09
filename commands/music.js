@@ -1,72 +1,67 @@
+const ytdl = require('ytdl-core');
+const fs = require('fs');
 const path = require('path');
-const fs = require('fs-extra');
-const ytdl = require('@distube/ytdl-core');
-const ytsr = require('ytsr');
 
 module.exports = (bot) => {
+    const YOUTUBE_API_KEY = 'AIzaSyA4b1j_IHISNZQi8UCGu0TMYof-byIWbMU'; // Replace with your YouTube API key
+
     bot.onText(/\/music (.+)/, async (msg, match) => {
         const chatId = msg.chat.id;
-        const musicName = match[1];
-
-        function byte2mb(bytes) {
-            const units = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-            let l = 0, n = parseInt(bytes, 10) || 0;
-            while (n >= 1024 && ++l) n = n / 1024;
-            return `${n.toFixed(n < 10 && l > 0 ? 1 : 0)} ${units[l]}`;
-        }
-
-        if (!musicName) {
-            bot.sendMessage(chatId, 'To get started, type /music and the title of the song you want.');
-            return;
-        }
+        const searchTerm = match[1];
+        const youtubeSearchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(searchTerm)}&key=${YOUTUBE_API_KEY}`;
 
         try {
-            bot.sendMessage(chatId, `Searching for "${musicName}"...`);
+            // Dynamically import node-fetch
+            const fetch = (await import('node-fetch')).default;
 
-            const searchResults = await ytsr(musicName, { limit: 1 });
-            if (!searchResults.items.length) {
-                bot.sendMessage(chatId, "Can't find the search.");
-                return;
+            // Step 1: Search for the video on YouTube
+            const response = await fetch(youtubeSearchUrl);
+            const data = await response.json();
+            if (!data.items || data.items.length === 0) {
+                return bot.sendMessage(chatId, `No results found for "${searchTerm}".`);
             }
 
-            const music = searchResults.items[0];
-            const musicUrl = music.url;
-            const stream = ytdl(musicUrl, { filter: 'audioonly' });
-            const time = new Date();
-            const timestamp = time.toISOString().replace(/[:.]/g, '-');
-            const filePath = path.join(__dirname, 'cache', `${timestamp}_music.mp3`);
+            const videoId = data.items[0].id.videoId;
+            const videoTitle = data.items[0].snippet.title;
+            const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-            stream.pipe(fs.createWriteStream(filePath));
-            
-            stream.on('response', () => {
-                // Handle the response, e.g., show progress (optional)
+            // Step 2: Download the audio directly in MP3 format
+            const outputFileName = path.join(__dirname, 'downloads', `${videoId}.mp3`);
+
+            // Ensure downloads directory exists
+            if (!fs.existsSync(path.join(__dirname, 'downloads'))) {
+                fs.mkdirSync(path.join(__dirname, 'downloads'));
+            }
+
+            // Download the audio stream
+            const audioStream = ytdl(videoUrl, { filter: 'audioonly', quality: 'highestaudio' });
+            const writeStream = fs.createWriteStream(outputFileName);
+
+            audioStream.pipe(writeStream);
+
+            writeStream.on('finish', () => {
+                // Step 3: Send the MP3 file to Telegram
+                bot.sendAudio(chatId, outputFileName, { title: videoTitle })
+                    .then(() => {
+                        // Delete the file after sending
+                        fs.unlinkSync(outputFileName);
+                    })
+                    .catch(error => {
+                        console.error('Error sending audio:', error);
+                        bot.sendMessage(chatId, `Error sending audio file: ${error.message}`);
+                    });
             });
 
-            stream.on('info', (info) => {
-                // You can log or use the info here (optional)
+            writeStream.on('error', error => {
+                console.error('Error writing audio file:', error);
+                bot.sendMessage(chatId, `Error writing audio file: ${error.message}`);
             });
 
-            stream.on('end', () => {
-                const fileSize = fs.statSync(filePath).size;
-                if (fileSize > 26214400) { // 25MB
-                    fs.unlinkSync(filePath);
-                    bot.sendMessage(chatId, 'The file could not be sent because it is larger than 25MB.');
-                    return;
-                }
-
-                const messageOptions = {
-                    caption: `${music.title}`,
-                    // Telegram requires the file to be either a readable stream or a file path
-                    thumb: filePath,
-                };
-                bot.sendAudio(chatId, filePath, messageOptions).then(() => {
-                    fs.unlinkSync(filePath);  // Clean up the file after sending
-                });
-            });
+            bot.sendMessage(chatId, `Downloading and preparing "${videoTitle}"...`);
 
         } catch (error) {
-            console.error(error);
-            bot.sendMessage(chatId, 'An error occurred while processing your request.');
+            console.error('Error:', error);
+            bot.sendMessage(chatId, `An error occurred: ${error.message}`);
         }
     });
 };
