@@ -8,7 +8,7 @@ module.exports = (bot) => {
     try {
       bot.sendMessage(chatId, '');
       
-      const response = await axios.get(`https://nash-rest-api.replit.app/gpt4?query=${encodeURIComponent(query)}`);
+      const response = await axios.get(`https://apilistbyzcdsph-7twv.onrender.com/gpt4?query=${encodeURIComponent(query)}`);
       const message = response.data.respond;
       
       bot.sendMessage(chatId, message);
