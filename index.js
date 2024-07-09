@@ -42,4 +42,4 @@ bot.on('polling_error', (error) => {
   console.log(`Polling error: ${error.code}`);
 });
 
-console.log('NashBot is running...');
+console.log('JihyoBot is running...');
