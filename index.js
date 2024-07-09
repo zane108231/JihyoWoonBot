@@ -5,7 +5,7 @@ const TelegramBot = require('node-telegram-bot-api');
 
 // Rainbow text function and logo omitted for brevity
 
-const token = 'YOUR_TELEGRAM_BOT_TOKEN';
+const token = '7298983210:AAHxiiwTnciv2odUzcLLj5xIJ2x0BMOQbEw';
 const bot = new TelegramBot(token, { polling: true, username: true }); // Enable username option
 
 const commandsPath = path.join(__dirname, 'commands');
