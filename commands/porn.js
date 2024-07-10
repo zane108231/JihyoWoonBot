@@ -1,4 +1,6 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');        
 
 module.exports = (bot) => {
   bot.onText(/\/porn/, async (msg) => {
@@ -7,30 +9,57 @@ module.exports = (bot) => {
     try {
       bot.sendMessage(chatId, 'Fetching a random video, please wait...');
 
-      // Fetch video details from the API
-      const response = await axios.get('https://nash-rest-api.replit.app/pornhub');
-      const video = response.data;
+      // Fetch random video link from the first API endpoint
+      const response1 = await axios.get('https://apilistbyzcdsph-7twv.onrender.com/xvideos');
+      const videoData = response1.data;
 
-      if (video && video.title && video.link) {
-        const title = video.title;
-        const link = video.link;
+      if (videoData && videoData.link) {
+        const randomVideoLink = videoData.link;
 
-        // Check if the video link is a direct URL to a video file
-        const isVideoFile = link.match(/\.(mp4|avi|mov|mkv)$/i);
+        // Fetch video details from the second API endpoint using the random video link
+        const response2 = await axios.get(`https://joshweb.click/prn/download?url=${encodeURIComponent(randomVideoLink)}`);
+        const videoInfo = response2.data.result;
 
-        if (isVideoFile) {
-          // Send the video file with the title as the caption
-          bot.sendVideo(chatId, link, { caption: title });
+        if (videoInfo && videoInfo.contentUrl && videoInfo.contentUrl.Low_Quality) {
+          const videoUrl = videoInfo.contentUrl.Low_Quality;
+
+          // Download the video
+          const videoResponse = await axios({
+            method: 'get',
+            url: videoUrl,
+            responseType: 'stream'
+          });
+
+          const timestamp = new Date().getTime(); // Generate a unique filename
+          const videoFilePath = path.join(__dirname, `${timestamp}.mp4`); // Save to current directory with a unique name
+
+          const writer = fs.createWriteStream(videoFilePath);
+          videoResponse.data.pipe(writer);
+
+          // Wait for file to finish downloading
+          await new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+          });
+
+          // Send the video file
+          bot.sendVideo(chatId, fs.createReadStream(videoFilePath), {
+            caption: videoInfo.name // Optionally send video name as caption
+          })
+            .then(() => {
+              // Delete the downloaded file after sending
+              fs.unlinkSync(videoFilePath);
+            })
+            .catch(err => console.error('', err));
         } else {
-          // If it's not a direct video file, send the link as a fallback
-          bot.sendMessage(chatId, `Title: ${title}\nLink: ${link}`);
+          bot.sendMessage(chatId, '');
         }
       } else {
-        bot.sendMessage(chatId, 'Sorry, the video data is not in the expected format.');
+        bot.sendMessage(chatId, '');
       }
     } catch (error) {
       console.error('Error fetching video:', error.message || error);
-      bot.sendMessage(chatId, `Sorry, there was an error fetching the video. Error: ${error.message}`);
+      bot.sendMessage(chatId, '');
     }
   });
 };
