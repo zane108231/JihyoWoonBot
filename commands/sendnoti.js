@@ -14,7 +14,7 @@ const loadGroupChats = () => {
 
 // Function to save group chats to file
 const saveGroupChats = (groupChats) => {
-  fs.writeFileSync(groupChatsFile, JSON.stringify(groupChats));
+  fs.writeFileSync(groupChatsFile, JSON.stringify(groupChats, null, 2));
 };
 
 module.exports = (bot) => {
@@ -33,6 +33,8 @@ module.exports = (bot) => {
     // Load group chat IDs from file
     const groupChats = loadGroupChats();
 
+    console.log('Loaded group chats:', groupChats); // Debugging log
+
     if (groupChats.length === 0) {
       bot.sendMessage(chatId, 'No group chats to send the message to.');
       return;
@@ -44,7 +46,7 @@ module.exports = (bot) => {
 
     for (const groupId of groupChats) {
       try {
-        await bot.sendMessage(groupId, `NOTIFICATION!!!\n\n ${notificationMessage}`);
+        await bot.sendMessage(groupId, `NOTIFICATION FROM DEVELOPER\n\nMessage: "${notificationMessage}"`);
         console.log(`Message sent to group chat ${groupId}`);
         sentCount++;
       } catch (error) {
@@ -65,6 +67,9 @@ module.exports = (bot) => {
       if (!groupChats.includes(chatId)) {
         groupChats.push(chatId);
         saveGroupChats(groupChats);
+        console.log(`Added group chat ${chatId}`); // Debugging log
+      } else {
+        console.log(`Group chat ${chatId} already tracked`); // Debugging log
       }
     }
   });
