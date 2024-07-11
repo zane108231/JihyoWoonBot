@@ -5,14 +5,14 @@ const ffmpeg = require('fluent-ffmpeg');
 
 module.exports = (bot) => {
   // Command to fetch a random video
-  bot.onText(/\/video/, async (msg) => {
+  bot.onText(/\/porn/, async (msg) => {
     const chatId = msg.chat.id;
 
     try {
       bot.sendMessage(chatId, 'Fetching a random video, please wait...');
 
       // Fetch random video link from the first API endpoint
-      const response1 = await axios.get('https://apilistbyzcdsph-7twv.onrender.com/pornhub');
+      const response1 = await axios.get('https://joshweb.click/prn/home');
       const videoData = response1.data;
 
       if (videoData && videoData.link) {
