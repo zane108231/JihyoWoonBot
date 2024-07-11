@@ -1,4 +1,4 @@
-const ytdl = require('ytdl-core');
+const youtubedl = require('youtube-dl-exec');
 const fs = require('fs');
 const path = require('path');
 
@@ -25,7 +25,7 @@ module.exports = (bot) => {
             const videoTitle = data.items[0].snippet.title;
             const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-            // Step 2: Download the audio directly in MP3 format
+            // Step 2: Download the audio directly in MP3 format using youtube-dl-exec
             const outputFileName = path.join(__dirname, 'downloads', `${videoId}.mp3`);
 
             // Ensure downloads directory exists
@@ -33,29 +33,23 @@ module.exports = (bot) => {
                 fs.mkdirSync(path.join(__dirname, 'downloads'));
             }
 
-            // Download the audio stream
-            const audioStream = ytdl(videoUrl, { filter: 'audioonly', quality: 'highestaudio' });
-            const writeStream = fs.createWriteStream(outputFileName);
-
-            audioStream.pipe(writeStream);
-
-            writeStream.on('finish', () => {
-                // Step 3: Send the MP3 file to Telegram
-                bot.sendAudio(chatId, outputFileName, { title: videoTitle })
-                    .then(() => {
-                        // Delete the file after sending
-                        fs.unlinkSync(outputFileName);
-                    })
-                    .catch(error => {
-                        console.error('Error sending audio:', error);
-                        bot.sendMessage(chatId, `Error sending audio file: ${error.message}`);
-                    });
+            // Download the audio using youtube-dl-exec
+            await youtubedl(videoUrl, {
+                extractAudio: true,
+                audioFormat: 'mp3',
+                output: outputFileName
             });
 
-            writeStream.on('error', error => {
-                console.error('Error writing audio file:', error);
-                bot.sendMessage(chatId, `Error writing audio file: ${error.message}`);
-            });
+            // Step 3: Send the MP3 file to Telegram
+            bot.sendAudio(chatId, outputFileName, { title: videoTitle })
+                .then(() => {
+                    // Delete the file after sending
+                    fs.unlinkSync(outputFileName);
+                })
+                .catch(error => {
+                    console.error('Error sending audio:', error);
+                    bot.sendMessage(chatId, `Error sending audio file: ${error.message}`);
+                });
 
             bot.sendMessage(chatId, `Downloading and preparing "${videoTitle}"...`);
 
