@@ -46,7 +46,7 @@ module.exports = (bot) => {
 
     for (const groupId of groupChats) {
       try {
-        await bot.sendMessage(groupId, `\n\n "${notificationMessage}"`);
+        await bot.sendMessage(groupId, `\n\n ${notificationMessage}`);
         console.log(`Message sent to group chat ${groupId}`);
         sentCount++;
       } catch (error) {
