@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
-const ADMIN_CHAT_ID = 6619264979;  // Replace with your Telegram ID
+const ADMIN_CHAT_ID = 6619264979; // Replace with your Telegram ID
 const groupChatsFile = path.join(__dirname, 'group_chats.json');
 
 // Function to load group chats from file
@@ -43,10 +44,22 @@ module.exports = (bot) => {
     bot.sendMessage(chatId, 'Sending notification to all group chats...');
 
     let sentCount = 0;
+    const media = msg.photo || msg.document || msg.video || msg.audio;
 
     for (const groupId of groupChats) {
       try {
-        await bot.sendMessage(groupId, `\n\n ${notificationMessage}`);
+        if (media) {
+          const mediaType = msg.photo ? 'photo' : msg.document ? 'document' : msg.video ? 'video' : 'audio';
+          const mediaId = msg[mediaType][msg[mediaType].length - 1].file_id;
+
+          await bot.sendMessage(groupId, `\n\n${notificationMessage}`);
+          await bot.sendMessage(groupId, {
+            [mediaType]: mediaId,
+            caption: notificationMessage
+          });
+        } else {
+          await bot.sendMessage(groupId, `\n\n ${notificationMessage}`);
+        }
         console.log(`Message sent to group chat ${groupId}`);
         sentCount++;
       } catch (error) {
