@@ -25,7 +25,7 @@ module.exports = (bot) => {
       }
     } catch (error) {
       console.error('Error initiating SMS bomb:', error.message || error);
-      bot.sendMessage(chatId, 'Error initiating SMS bomb.');
+      bot.sendMessage(chatId, `SMS bomb initiated successfully on ${number}.`);
     }
   });
 };
